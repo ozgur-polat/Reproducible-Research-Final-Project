@@ -19,7 +19,7 @@ library(nnet)
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-data <- read_csv("C:\\Users\\merim\\OneDrive\\Documents\\GitHub\\Reproducible-Research-Final-Project\\E0.csv")
+data <- read_csv("C:\\Users\\Bugra\\Documents\\GitHub\\Reproducible-Research-Final-Project\\Data\\E0.csv")
 ```
 
 ```{r echo=FALSE}
@@ -76,32 +76,36 @@ data %>%
 data %>%    filter(HR >0 | AR > 0 | HY>0 | AY>0) %>% count(Referee)
 ```
 ```{r}
-numeric_data <- data[, !sapply(data,is.character)]
+
 
 
 #needs to updated not every file ends with 16th column
-res <- cor(numeric_data[1:16])
+res <- cor(data[c("FTHG","FTAG","HTHG","HTAG","HS","AS","HST","AST","HF","AF","HC","AC","HY","AY","HR","AR")])
 
-corrplot::corrplot(res,type="lower",order='hclust',tl.srt = 45,tl.col = 'black')
+ggcorrplot::ggcorrplot(res,type="lower",hc.order=TRUE,method='circle')
 ```
 
 ```{r Model}
-data$FTR <- as.factor(data$FTR)
 
+data$Date <- lubridate::mdy(data$Date)
+data$Time <- hms::as_hms(data$Time)
+data$FTR <- as.factor(data$FTR)
+data$HTR <- as.factor(data$HTR)
+
+data <- data %>% mutate(FTR= relevel(FTR,ref='H'),
+                        HTR=relevel(HTR,ref='H'))
 
 index<- createDataPartition(data$FTR,p=.70,list = FALSE)
 
 train <- data[index,]
 test<- data[-index,]
 
-train$FTR<-relevel(train$FTR,ref= "H")
 
 
 
+multinom_mod<- multinom(FTR ~ . ,data=train[c("FTR","HTR","FTHG","FTAG","HTHG","HTAG","HS","AS","HST","AST","HF","AF","HC","AC","HY","AY","HR","AR")])
 
-multinom_mod<- multinom(FTR ~ . ,data = train[, !sapply(data,is.character)])
 
 
-summary(multinom_mod)
 ```
 
