@@ -14,6 +14,8 @@ library(readr)
 library(tidyverse)
 library(dplyr)
 library(kableExtra)
+library(caret)
+library(nnet)
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -67,5 +69,39 @@ data %>%
 data %>% 
   mutate(FTR = as_factor(FTR)) %>%
   mutate(FTR = fct_relevel())
+```
+
+```{r}
+#most crucial referees
+data %>%    filter(HR >0 | AR > 0 | HY>0 | AY>0) %>% count(Referee)
+```
+```{r}
+numeric_data <- data[, !sapply(data,is.character)]
+
+
+#needs to updated not every file ends with 16th column
+res <- cor(numeric_data[1:16])
+
+corrplot::corrplot(res,type="lower",order='hclust',tl.srt = 45,tl.col = 'black')
+```
+
+```{r Model}
+data$FTR <- as.factor(data$FTR)
+
+
+index<- createDataPartition(data$FTR,p=.70,list = FALSE)
+
+train <- data[index,]
+test<- data[-index,]
+
+train$FTR<-relevel(train$FTR,ref= "H")
+
+
+
+
+multinom_mod<- multinom(FTR ~ . ,data = train[, !sapply(data,is.character)])
+
+
+summary(multinom_mod)
 ```
 
