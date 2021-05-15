@@ -1,0 +1,71 @@
+---
+title: "main"
+author: "Erim Celen"
+date: "5/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(kableExtra)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+data <- read_csv("C:\\Users\\merim\\OneDrive\\Documents\\GitHub\\Reproducible-Research-Final-Project\\E0.csv")
+```
+
+```{r echo=FALSE}
+table <- data %>% 
+            summarise('Home Team Shots' = sum(HS), 
+                      'Home Team Shots on Target' = sum(HST), 
+                      'Away Team Shots' = sum(AS), 
+                      'Away Team Shots on Target' = sum(AST)) %>% 
+            pivot_longer(everything())
+
+table <- table %>% 
+            mutate(place = substr(name,1,4))
+
+ggplot(table, aes(x=name, y=value, fill=place)) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = value)) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.title = element_blank())
+
+```
+
+```{r include=FALSE}
+proportions <- as.data.frame(c("Home","Away")) %>% setNames(c("name"))
+proportions$value <- c(round(table[2,2] / table[1, 2],4) * 100,round(table[4,2] / table[3, 2],4) * 100)
+proportions$value = paste0('%', proportions$value)
+```
+
+```{r echo=FALSE}
+proportions %>%
+  kable(col.names = NULL,digits = 2,"html",row.names = FALSE,caption = "Percentage of Shots on Target") %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  group_by(Time) %>%
+  tally(sort = T) %>%
+  top_n(3) %>%
+  kable(col.names = NULL,digits = 2,"html",row.names = FALSE,caption = "Most Played Game Hours") %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+```
+
+```{r}
+data %>% 
+  mutate(FTR = as_factor(FTR)) %>%
+  mutate(FTR = fct_relevel())
+```
+
