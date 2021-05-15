@@ -113,3 +113,20 @@ multinom_mod<- multinom(FTR ~ . ,data=train[c("FTR","HTR","FTHG","FTAG","HTHG","
 
 ```
 
+```{r}
+
+
+HomeBet <-data %>%  filter(FTR == "H") %>% 
+  select("Date","HomeTeam","AwayTeam","FTR","B365H","BWH","IWH","PSH","WHH","VCH")
+
+
+HomeBet$Max <- pmax(HomeBet$B365H,HomeBet$IWH,HomeBet$PSH,HomeBet$WHH,HomeBet$VCH)
+
+AwayBet <-data %>%  filter(FTR == "A") %>% 
+  select("Date","HomeTeam","AwayTeam","FTR","B365A","BWA","IWA","PSA","WHA","VCA")
+
+AwayBet$Max <- pmax(AwayBet$B365A,AwayBet$IWA,AwayBet$PSA,AwayBet$WHA,AwayBet$VCA)
+AwayBet
+
+```
+
