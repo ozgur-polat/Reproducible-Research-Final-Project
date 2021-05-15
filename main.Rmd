@@ -1,6 +1,6 @@
 ---
-title: "main"
-author: "Erim Celen"
+title: "Reproducible Research Final Project"
+author: "Erim Celen, Ozgur Polat, Bugra Duman"
 date: "5/7/2021"
 output: html_document
 ---
@@ -65,10 +65,14 @@ data %>%
   kable_styling(font_size = 20,bootstrap_options = c("striped"))
 ```
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>% 
   mutate(FTR = as_factor(FTR)) %>%
-  mutate(FTR = fct_relevel())
+  mutate(FTR = recode_factor(FTR,A = "Away", H = "Home", D = "Draw")) %>%
+  group_by(FTR) %>%
+  count() %>%
+  kable(col.names = NULL,digits = 2,"html",row.names = FALSE,caption = "Full Time Results") %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped"))
 ```
 
 ```{r}
