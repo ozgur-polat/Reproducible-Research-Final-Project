@@ -38,6 +38,79 @@ In this reproducible project you can simply use other datasets in this data sour
 ## Data Description
 All data is in csv format, ready for use within standard spreadsheet applications. Please note that some abbreviations are no longer in use (in particular odds from specific bookmakers no longer used) and refer to data collected in earlier seasons. For a current list of what bookmakers are included in the dataset please visit the link given above.
 
+### Key to results data:
+**Div =** League Division <br />
+**Date =** Match Date (dd/mm/yy) <br />
+**Time =** Time of match kick off <br />
+**HomeTeam =** Home Team <br />
+**AwayTeam =** Away Team <br />
+**FTHG and HG =** Full Time Home Team Goals <br />
+**FTAG and AG =** Full Time Away Team Goals <br />
+**FTR and Res =** Full Time Result (H=Home Win, D=Draw, A=Away Win) <br />
+**HTHG =** Half Time Home Team Goals <br />
+**HTAG =** Half Time Away Team Goals <br />
+**HTR =** Half Time Result (H=Home Win, D=Draw, A=Away Win) <br />
+
+### Match Statistics (where available):
+Attendance = Crowd Attendance <br />
+Referee = Match Referee <br />
+HS = Home Team Shots <br />
+AS = Away Team Shots <br />
+HST = Home Team Shots on Target <br />
+AST = Away Team Shots on Target <br />
+HHW = Home Team Hit Woodwork <br />
+AHW = Away Team Hit Woodwork <br />
+HC = Home Team Corners <br />
+AC = Away Team Corners <br />
+HF = Home Team Fouls Committed <br />
+AF = Away Team Fouls Committed <br />
+HFKC = Home Team Free Kicks Conceded <br />
+AFKC = Away Team Free Kicks Conceded <br />
+HO = Home Team Offsides <br />
+AO = Away Team Offsides <br />
+HY = Home Team Yellow Cards <br />
+AY = Away Team Yellow Cards <br />
+HR = Home Team Red Cards <br />
+AR = Away Team Red Cards <br />
+
+### Key to 1X2 (match) betting odds data:
+
+B365H = Bet365 home win odds  <br />
+B365D = Bet365 draw odds <br />
+B365A = Bet365 away win odds <br />
+BSH = Blue Square home win odds <br />
+BSD = Blue Square draw odds <br />
+BSA = Blue Square away win odds <br />
+BWH = Bet&Win home win odds <br />
+BWD = Bet&Win draw odds <br />
+BWA = Bet&Win away win odds <br />
+GBH = Gamebookers home win odds <br />
+GBD = Gamebookers draw odds <br />
+GBA = Gamebookers away win odds <br />
+IWH = Interwetten home win odds <br />
+IWD = Interwetten draw odds <br />
+IWA = Interwetten away win odds <br />
+LBH = Ladbrokes home win odds <br />
+LBD = Ladbrokes draw odds <br />
+LBA = Ladbrokes away win odds <br />
+PSH and PH = Pinnacle home win odds <br />
+PSD and PD = Pinnacle draw odds <br />
+PSA and PA = Pinnacle away win odds <br />
+SOH = Sporting Odds home win odds <br />
+SOD = Sporting Odds draw odds <br />
+SOA = Sporting Odds away win odds <br />
+SBH = Sportingbet home win odds <br />
+SBD = Sportingbet draw odds <br />
+SBA = Sportingbet away win odds <br />
+SJH = Stan James home win odds <br />
+SJD = Stan James draw odds <br />
+SJA = Stan James away win odds <br />
+SYH = Stanleybet home win odds <br />
+SYD = Stanleybet draw odds <br />
+SYA = Stanleybet away win odds <br />
+VCH = VC Bet home win odds <br />
+VCD = VC Bet draw odds <br />
+VCA = VC Bet away win odds <br />
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
