@@ -8,7 +8,6 @@ output:
     highlight: tango
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -16,110 +15,367 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r include=FALSE}
 library(readr)
 library(tidyverse)
+library(plyr)
 library(dplyr)
 library(kableExtra)
 library(caret)
 library(nnet)
+library(gridExtra)
+library(grid)
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-data <- read_csv("C:\\Users\\Bugra\\Documents\\GitHub\\Reproducible-Research-Final-Project\\Data\\E0.csv")
-data <- data[1:42]
+data <- read_csv(url("https://www.football-data.co.uk/mmz4281/1920/E0.csv"))
+data <- data[1:41]
 ```
+
+
 ## Data Description
 
 data description here
 
+## Data Analysis
+
 ## Teams in the league
-```{r echo=FALSE, message=TRUE, warning=FALSE}
-Teams <- data %>%
-            select(HomeTeam) %>%
-            rename(Teams = HomeTeam) %>%
-            unique() %>%
-            arrange(Teams)
+```{r fig.align="center", echo=FALSE, message=TRUE, warning=FALSE}
+Teams <- 
+  data %>%
+  select(HomeTeam) %>%
+  unique() %>%
+  arrange(HomeTeam) %>% 
+  setNames(c("value"))
 
 
-kable(
-  col.names = NULL,
-  list(Teams[1:10,],Teams[11:nrow(Teams),])
-) %>%
-  kable_styling(position = "center")
+kable(col.names = NULL,list(Teams[1:10,],Teams[11:nrow(Teams),])) %>%
+kable_styling(position = "center")
 
 ```
 
-## caption
-```{r echo=FALSE}
-table <- data %>% 
-            summarise('Home Team Shots' = sum(HS), 
-                      'Home Team Shots on Target' = sum(HST), 
-                      'Away Team Shots' = sum(AS), 
-                      'Away Team Shots on Target' = sum(AST)) %>% 
-            pivot_longer(everything())
 
-table <- table %>% 
-            mutate(place = substr(name,1,4))
-
-ggplot(table, aes(x=name, y=value, fill=place)) + 
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = value)) +
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.title = element_blank())
-
-```
+## Standings Table
 
 ```{r include=FALSE}
+points_table <-
+  data %>%
+  summarize(HomeTeam,AwayTeam,FTR) %>%
+  mutate(class1 = ifelse(FTR == "D",1,3)) %>%
+  pivot_longer(cols = c("HomeTeam","AwayTeam"))
+
+points_table$class2 <- ifelse(substr(points_table$name, 1,1) == substr(points_table$FTR, 1,1),3,0)
+
+points_table <- 
+  points_table %>%
+  filter(class1 == 1 | class2 == 3) %>%
+  mutate(final = ifelse(class1 != class2, class1, class2)) %>% 
+  group_by(value) %>%
+  summarise_at(vars(final),
+               list(P=sum))
+
+wins_table <- 
+  data %>%
+  summarize(HomeTeam,AwayTeam,FTR) %>%
+  filter(FTR != "D") %>%
+  pivot_longer(cols = c("HomeTeam","AwayTeam"))
+
+wins_table$w <- substr(wins_table$name, 1,1) == substr(wins_table$FTR, 1,1)  
+
+wins_table <- 
+  wins_table %>%
+  filter(w == TRUE) %>%
+  group_by(value) %>%
+  summarise_at(vars(w),
+               list(W=sum))
+
+lost_table <-
+  data %>%
+  summarize(HomeTeam,AwayTeam,FTR) %>%
+  filter(FTR != "D") %>%
+  pivot_longer(cols = c("HomeTeam","AwayTeam"))
+
+lost_table$l <- substr(lost_table$name, 1,1) != substr(lost_table$FTR, 1,1)
+
+lost_table <- 
+  lost_table %>%
+  filter(l == TRUE) %>%
+  group_by(value) %>%
+  summarise_at(vars(l),
+               list(L=sum))
+
+draw_table <- 
+  data %>%
+  summarize(HomeTeam,AwayTeam,FTR) %>%
+  filter(FTR == "D") %>%
+  pivot_longer(cols = c("HomeTeam","AwayTeam")) %>%
+  mutate(d = ifelse(FTR == "D",1,0)) %>% 
+  group_by(value) %>% 
+  summarise_at(vars(d),
+               list(D=sum))
+
+gfh_table <-
+  data %>% 
+  group_by(HomeTeam) %>%
+  summarise_at(vars(FTHG),
+               list(GFH=sum)) %>% 
+  setNames(c("value","GFH"))
+
+gfa_table <-
+  data %>% 
+  group_by(AwayTeam) %>%
+  summarise_at(vars(FTAG),
+               list(GFA=sum)) %>% 
+  setNames(c("value","GFA"))
+
+gf_table <- 
+  ddply(merge(gfa_table, gfh_table, by = "value"),.(value),summarise, GF=sum(GFH+GFA))
+
+gah_table <-
+  data %>% 
+  group_by(HomeTeam) %>%
+  summarise_at(vars(FTAG),
+               list(GAH=sum)) %>% 
+  setNames(c("value","GAH"))
+
+gaa_table <-
+  data %>% 
+  group_by(AwayTeam) %>%
+  summarise_at(vars(FTHG),
+               list(GAA=sum)) %>% 
+  setNames(c("value","GAA"))
+
+ga_table <- 
+  ddply(merge(gah_table, gaa_table, by = "value"),.(value),summarise, GA=sum(GAH+GAA))
+
+
+gd_table <-
+  ddply(merge(ga_table, gf_table, by = "value"),.(value),summarise, GD=sum(GF-GA))
+
+```
+
+
+```{r echo=FALSE}
+standings <- cbind(Teams,wins_table,draw_table,lost_table,gf_table,ga_table,gd_table,points_table)
+standings <- standings[,c(-2,-4,-6,-8,-10,-12,-14)]
+colnames(standings)[1] <- "Teams"
+standings %>% 
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) 
+```
+
+
+## Number of Wins {.tabset}
+
+### Table
+
+```{r echo=FALSE}
+winners <- 
+  data %>%
+  summarize(HomeTeam,AwayTeam,FTR) %>%
+  filter(FTR != "D") %>%
+  pivot_longer(cols = c("HomeTeam","AwayTeam"))
+
+winners$w <- substr(winners$name, 1,1) == substr(winners$FTR, 1,1)  
+  
+winners %>%
+  filter(w == TRUE) %>%
+  group_by(value) %>%
+  summarise_at(vars(w),
+               list(W=sum)) %>% 
+  arrange(desc(W)) %>%
+  head(5) %>%
+  kable(col.names = c("Teams","Number of Wins"),digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) 
+  
+```
+
+### Code
+
+```{r}
+winners <- 
+  data %>%
+  summarize(HomeTeam,AwayTeam,FTR) %>%
+  filter(FTR != "D") %>%
+  pivot_longer(cols = c("HomeTeam","AwayTeam"))
+
+winners$w <- substr(winners$name, 1,1) == substr(winners$FTR, 1,1)  
+  
+winners %>%
+  filter(w == TRUE) %>%
+  group_by(value) %>%
+  summarise_at(vars(w),
+               list(W=sum)) %>% 
+  arrange(desc(W)) %>%
+  kable(col.names = c("Teams","Number of Wins"),digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) 
+  
+```
+
+## Percentage of Shots on Target
+
+```{r include=FALSE}
+table <- 
+  data %>% 
+  summarise('Home Shot' = sum(HS), 
+            'Home Shot on Target' = sum(HST), 
+            'Away Shot' = sum(AS), 
+            'Away Shot on Target' = sum(AST)) %>% 
+  pivot_longer(everything())
+
+table <- 
+  table %>% 
+  mutate(place = substr(name,1,4))
+
+p1 <-  ggplot(table, aes(x=name, y=value, fill=place)) + 
+            geom_bar(stat = "identity") +
+            geom_text(aes(label = value)) +
+            theme(axis.title.x = element_blank(),
+                  axis.title.y = element_blank(),
+                  axis.text.y = element_blank(),
+                  axis.text.x = element_text(angle = 45,size = 8,hjust = 1),
+                  axis.ticks.y = element_blank(),
+                  legend.title = element_blank()) +
+            scale_fill_manual(values = c("#d8b365", "#5ab4ac"))
+
+
 proportions <- as.data.frame(c("Home","Away")) %>% setNames(c("name"))
 proportions$value <- c(round(table[2,2] / table[1, 2],4) * 100,round(table[4,2] / table[3,2],4) * 100)
 proportions$value = paste0('%', proportions$value)
 ```
 
-## Percentage of Shots on Target
-```{r echo=FALSE}
-proportions %>%
-  kable(col.names = NULL,digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+```{r fig.align="center", echo=FALSE}
+t1 <- tableGrob(proportions, theme = ttheme_minimal(), rows = NULL,cols = NULL)
+
+grid.arrange(p1,t1, nrow=1)
+
 ```
 
-## Most Played Game Hours
+
+## Most Played Game Hours {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
   group_by(Time) %>%
   tally(sort = T) %>%
   top_n(3) %>%
-  kable(col.names = NULL,digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable(col.names = c("Time","Game Played"),digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))  
 ```
 
-## Full Time Results
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  group_by(Time) %>%
+  tally(sort = T) %>%
+  top_n(3) %>%
+  kable(col.names = c("Time","Game Played"),digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) 
+```
+
+
+## Full Time Results {.tabset}
+
+Home team always has the advantage since they have more fans in the stadium.
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>% 
   mutate(FTR = as_factor(FTR)) %>%
   mutate(FTR = recode_factor(FTR,A = "Away", H = "Home", D = "Draw")) %>%
-  group_by(FTR) %>%
-  count() %>%
-  kable(col.names = NULL,digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  select(FTR) %>% 
+  count() %>% 
+  arrange(desc(freq)) %>%
+  kable(col.names = c("Team","Wins"),"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## Games with most goals
+### Table Code
+
+```{r message=FALSE, warning=FALSE}
+data %>% 
+  mutate(FTR = as_factor(FTR)) %>%
+  mutate(FTR = recode_factor(FTR,A = "Away", H = "Home", D = "Draw")) %>%
+  select(FTR) %>% 
+  count() %>% 
+  arrange(desc(freq)) %>%
+  kable(col.names = c("Team","Wins"),"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Plot
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>% 
+  mutate(FTR = as_factor(FTR)) %>%
+  mutate(FTR = recode_factor(FTR,A = "Away", H = "Home", D = "Draw")) %>%
+  select(FTR) %>%
+  count() %>%
+  ggplot(aes(x="", y=freq, fill=FTR)) +
+  geom_bar(stat = "identity", width=1) +
+  coord_polar(theta = "y", start = 0) +
+  scale_fill_manual(values=c("#B81D13", "#008450","#EFB700")) +
+  geom_text(aes(label = freq),position = position_stack(vjust = 0.5)) +
+  theme_void() +
+  labs(fill = NULL)
+
+```
+
+### Plot Code
+
+```{r message=FALSE, warning=FALSE}
+data %>% 
+  mutate(FTR = as_factor(FTR)) %>%
+  mutate(FTR = recode_factor(FTR,A = "Away", H = "Home", D = "Draw")) %>%
+  select(FTR) %>%
+  count() %>%
+  ggplot(aes(x="", y=freq, fill=FTR)) +
+  geom_bar(stat = "identity", width=1) +
+  coord_polar(theta = "y", start = 0) +
+  scale_fill_manual(values=c("#B81D13", "#008450","#EFB700")) +
+  geom_text(aes(label = freq),position = position_stack(vjust = 0.5)) +
+  theme_void() +
+  labs(fill = NULL)
+
+```
+
+## Games with most goals {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
   select(Date,HomeTeam,AwayTeam,FTHG,FTAG) %>%
-  rename(HomeScore = FTHG,AwayScore = FTAG) %>%
   rowwise() %>%
-  mutate(m = sum(c(HomeScore,AwayScore))) %>%
+  mutate(m = sum(c(FTHG,FTAG))) %>%
   ungroup() %>%
   arrange(desc(m)) %>%
   head(3) %>%
   select(-m)%>%
   kable(digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## Average Odds
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  select(Date,HomeTeam,AwayTeam,FTHG,FTAG) %>%
+  rowwise() %>%
+  mutate(m = sum(c(FTHG,FTAG))) %>%
+  ungroup() %>%
+  arrange(desc(m)) %>%
+  head(3) %>%
+  select(-m)%>%
+  kable(digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Average Odds {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
   mutate(B365s = rowSums(.[grep("B365",names(.))]),
@@ -135,38 +391,88 @@ data %>%
             WilliamHill = mean(WHs),
             VCBet = mean(VCs))%>%
   pivot_longer(everything()) %>%
-  arrange(desc(value,2)) %>%
-  kable(digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  arrange(desc(value)) %>%
+  kable(digits = 2,"html",row.names = FALSE, col.names = c("Bet Platform","Average of Total odds")) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
   
 ```
 
-## Mean of Cards
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  mutate(B365s = rowSums(.[grep("B365",names(.))]),
+         BWs = rowSums(.[grep("BW",names(.))]),
+         IWs = rowSums(.[grep("IW",names(.))]),
+         PSs = rowSums(.[grep("PS",names(.))]),
+         WHs = rowSums(.[grep("WH",names(.))]),
+         VCs = rowSums(.[grep("VC",names(.))])) %>%
+  summarise(Bet365 = mean(B365s),
+            BetWin = mean(BWs),
+            Interwetten = mean(IWs),
+            Pinnacle = mean(PSs),
+            WilliamHill = mean(WHs),
+            VCBet = mean(VCs))%>%
+  pivot_longer(everything()) %>%
+  arrange(desc(value)) %>%
+  kable(digits = 2,"html",row.names = FALSE, col.names = c("Bet Platform","Average of Total odds")) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+  
+```
+
+## Mean of Cards {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
   mutate(YellowCards = rowSums(select_(.,"HY","AY")),
          RedCards = rowSums(select_(.,"HR","AR"))) %>%
   summarise(RedCard = mean(RedCards) ,
             YellowCard = mean(YellowCards )) %>%
-  kable(digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  pivot_longer(everything()) %>%
+  kable(digits = 2,"html", row.names = FALSE, col.names = c("Type of Card","Average of Card per game")) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) %>%
+  row_spec(1,background = "#FF0000",color = "black") %>%
+  row_spec(2,background = "yellow",color = "black")
 ```
 
-## En cok sut ceken 5 takim
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  mutate(YellowCards = rowSums(select_(.,"HY","AY")),
+         RedCards = rowSums(select_(.,"HR","AR"))) %>%
+  summarise(RedCard = mean(RedCards) ,
+            YellowCard = mean(YellowCards )) %>%
+  pivot_longer(everything()) %>%
+  kable(digits = 2,"html", row.names = FALSE, col.names = c("Type of Card","Average of Card per game")) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) %>%
+  row_spec(1,background = "#FF0000",color = "black") %>%
+  row_spec(2,background = "yellow",color = "black")
+```
+
+## En cok sut ceken 5 takim {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 HomeShot <- data %>%
                 group_by(HomeTeam) %>%
                 summarise(HomeTeam,HS) %>%
-                rename(Team = HomeTeam) %>%
-                pivot_longer(cols = HS) %>%
-                summarise(HomeShots = sum(value))
+                pivot_longer(cols = HS) %>% 
+                group_by(HomeTeam) %>% 
+                summarise_at(vars(value),list(HomeShots=sum)) %>% 
+                setNames(c("Team","HomeShots"))
+                
 
 AwayShot <- data %>%
                 group_by(AwayTeam) %>%
                 summarise(AwayTeam,AS) %>%
-                rename(Team = AwayTeam) %>%
                 pivot_longer(cols = AS) %>%
-                summarise(AwayShots = sum(value))
+                group_by(AwayTeam) %>% 
+                summarise_at(vars(value),list(AwayShots = sum)) %>% 
+                setNames(c("Team","AwayShots"))
 
 TotalShot <- merge(HomeShot,AwayShot, by = "Team")
 
@@ -175,24 +481,90 @@ TotalShot %>%
   arrange(desc(TotalShots)) %>%
   head(5) %>%
   kable(digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## En cok foul yapan 5 takim
+### Code
+
+```{r message=FALSE, warning=FALSE}
+HomeShot <- data %>%
+                group_by(HomeTeam) %>%
+                summarise(HomeTeam,HS) %>%
+                pivot_longer(cols = HS) %>% 
+                group_by(HomeTeam) %>% 
+                summarise_at(vars(value),list(HomeShots=sum)) %>% 
+                setNames(c("Team","HomeShots"))
+                
+
+AwayShot <- data %>%
+                group_by(AwayTeam) %>%
+                summarise(AwayTeam,AS) %>%
+                pivot_longer(cols = AS) %>%
+                group_by(AwayTeam) %>% 
+                summarise_at(vars(value),list(AwayShots = sum)) %>% 
+                setNames(c("Team","AwayShots"))
+
+TotalShot <- merge(HomeShot,AwayShot, by = "Team")
+
+TotalShot %>%
+  mutate(TotalShots = rowSums(select_(.,"HomeShots","AwayShots"))) %>%
+  arrange(desc(TotalShots)) %>%
+  head(5) %>%
+  kable(digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## En cok foul yapan 5 takim {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 HomeOff <- data %>%
                 group_by(HomeTeam) %>%
                 summarise(HomeTeam,HF) %>%
-                rename(Team = HomeTeam) %>%
                 pivot_longer(cols = HF) %>%
-                summarise(HomeOffs = sum(value))
+                group_by(HomeTeam) %>% 
+                summarise_at(vars(value),list(HomeOffs = sum))%>% 
+                setNames(c("Team","HomeFouls"))
+
 
 AwayOff <- data %>%
                 group_by(AwayTeam) %>%
                 summarise(AwayTeam,AF) %>%
-                rename(Team = AwayTeam) %>%
                 pivot_longer(cols = AF) %>%
-                summarise(AwayOffs = sum(value))
+                group_by(AwayTeam) %>% 
+                summarise_at(vars(value),list(AwayOffs = sum)) %>% 
+                setNames(c("Team","AwayFouls"))
+
+TotalOff <- merge(HomeOff,AwayOff, by = "Team")
+
+TotalOff %>%
+  mutate(TotalOffs = rowSums(select_(.,"HomeFouls","AwayFouls"))) %>%
+  arrange(desc(TotalOffs)) %>%
+  head(5) %>%
+  kable(digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+HomeOff <- data %>%
+                group_by(HomeTeam) %>%
+                summarise(HomeTeam,HF) %>%
+                pivot_longer(cols = HF) %>%
+                group_by(HomeTeam) %>% 
+                summarise_at(vars(value),list(HomeOffs = sum))%>% 
+                setNames(c("Team","HomeOffs"))
+
+
+AwayOff <- data %>%
+                group_by(AwayTeam) %>%
+                summarise(AwayTeam,AF) %>%
+                pivot_longer(cols = AF) %>%
+                group_by(AwayTeam) %>% 
+                summarise_at(vars(value),list(AwayOffs = sum)) %>% 
+                setNames(c("Team","AwayOffs"))
 
 TotalOff <- merge(HomeOff,AwayOff, by = "Team")
 
@@ -201,24 +573,31 @@ TotalOff %>%
   arrange(desc(TotalOffs)) %>%
   head(5) %>%
   kable(digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## En cok korner kullanan 5 takim
+
+## En cok korner kullanan 5 takim {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 HomeCor <- data %>%
                 group_by(HomeTeam) %>%
                 summarise(HomeTeam,HC) %>%
-                rename(Team = HomeTeam) %>%
                 pivot_longer(cols = HC) %>%
-                summarise(HomeCors = sum(value))
+                group_by(HomeTeam) %>% 
+                summarise_at(vars(value),list(HomeCors = sum)) %>% 
+                setNames(c("Team","HomeCors"))
+
 
 AwayCor <- data %>%
                 group_by(AwayTeam) %>%
                 summarise(AwayTeam,AC) %>%
-                rename(Team = AwayTeam) %>%
                 pivot_longer(cols = AC) %>%
-                summarise(AwayCors = sum(value))
+                group_by(AwayTeam) %>% 
+                summarise_at(vars(value),list(AwayCors = sum)) %>% 
+                setNames(c("Team","AwayCors"))
 
 TotalCor <- merge(HomeCor,AwayCor, by = "Team")
 
@@ -227,125 +606,263 @@ TotalCor %>%
   arrange(desc(TotalCors)) %>%
   head(5) %>%
   kable(digits = 2,"html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## Evinde en cok gol yiyen 5 takim
+### Code
+
+```{r message=FALSE, warning=FALSE}
+HomeCor <- data %>%
+                group_by(HomeTeam) %>%
+                summarise(HomeTeam,HC) %>%
+                pivot_longer(cols = HC) %>%
+                group_by(HomeTeam) %>% 
+                summarise_at(vars(value),list(HomeCors = sum)) %>% 
+                setNames(c("Team","HomeCors"))
+
+
+AwayCor <- data %>%
+                group_by(AwayTeam) %>%
+                summarise(AwayTeam,AC) %>%
+                pivot_longer(cols = AC) %>%
+                group_by(AwayTeam) %>% 
+                summarise_at(vars(value),list(AwayCors = sum)) %>% 
+                setNames(c("Team","AwayCors"))
+
+TotalCor <- merge(HomeCor,AwayCor, by = "Team")
+
+TotalCor %>%
+  mutate(TotalCors = rowSums(select_(.,"HomeCors","AwayCors"))) %>%
+  arrange(desc(TotalCors)) %>%
+  head(5) %>%
+  kable(digits = 2,"html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Evinde en cok gol yiyen 5 takim {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
-  group_by(HomeTeam) %>%
-  summarise(HomeTeam,FTAG) %>%
   pivot_longer(cols = FTAG) %>%
-  summarise(AwayTeamGoal = sum(value)) %>%
+  group_by(HomeTeam) %>% 
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
   arrange(desc(AwayTeamGoal)) %>%
   head(5) %>%
   kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## Evinde ilk yarida en cok gol yiyen 5 takim
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-data %>%
-  group_by(HomeTeam) %>%
-  summarise(HomeTeam,HTAG) %>%
-  pivot_longer(cols = HTAG) %>%
-  summarise(AwayTeamGoal = sum(value)) %>%
-  arrange(desc(AwayTeamGoal)) %>%
-  head(5) %>%
-  kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
-```
+### Code
 
-## Evinde en cok gol atan 5 takim
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 data %>%
-  group_by(HomeTeam) %>%
-  summarise(HomeTeam,FTHG) %>%
-  pivot_longer(cols = FTHG) %>%
-  summarise(HomeTeamGoal = sum(value)) %>%
-  arrange(desc(HomeTeamGoal)) %>%
-  head(5) %>%
-  kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
-```
-
-## Evinde ilk yarida en cok gol atan 5 takim
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-data %>%
-  group_by(HomeTeam) %>%
-  summarise(HomeTeam,HTHG) %>%
-  pivot_longer(cols = HTHG) %>%
-  summarise(HomeTeamGoal = sum(value)) %>%
-  arrange(desc(HomeTeamGoal)) %>%
-  head(5) %>%
-  kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
-```
-
-## Deplasmanda en cok gol yiyen 5 takim
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-data %>%
-  group_by(AwayTeam) %>%
-  summarise(AwayTeam,FTHG) %>%
-  pivot_longer(cols = FTHG) %>%
-  summarise(HomeTeamGoal = sum(value)) %>%
-  arrange(desc(HomeTeamGoal)) %>%
-  head(5) %>%
-  kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
-```
-
-## Deplasmanda ilk yarida en cok gol yiyen 5 takim
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-data %>%
-  group_by(AwayTeam) %>%
-  summarise(AwayTeam,HTHG) %>%
-  pivot_longer(cols = HTHG) %>%
-  summarise(HomeTeamGoal = sum(value)) %>%
-  arrange(desc(HomeTeamGoal)) %>%
-  head(5) %>%
-  kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
-```
-
-## Deplasmanda en cok gol atan 5 takim
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-data %>%
-  group_by(AwayTeam) %>%
-  summarise(AwayTeam,FTAG) %>%
   pivot_longer(cols = FTAG) %>%
-  summarise(AwayTeamGoal = sum(value)) %>%
+  group_by(HomeTeam) %>% 
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
   arrange(desc(AwayTeamGoal)) %>%
   head(5) %>%
   kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-## Deplasmanda ilk yarida en cok gol atan 5 takim
+## Evinde ilk yarida en cok gol yiyen 5 takim {.tabset}
+
+### Table
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
-  group_by(AwayTeam) %>%
-  summarise(AwayTeam,HTAG) %>%
   pivot_longer(cols = HTAG) %>%
-  summarise(AwayTeamGoal = sum(value)) %>%
+  group_by(HomeTeam) %>%
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
   arrange(desc(AwayTeamGoal)) %>%
   head(5) %>%
   kable("html",row.names = FALSE) %>%
-  kable_styling(font_size = 20,bootstrap_options = c("striped"))
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
-```{r}
-#most crucial referees
-data %>%    filter(HR >0 | AR > 0 | HY>0 | AY>0) %>% count(Referee)
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTAG) %>%
+  group_by(HomeTeam) %>%
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
+  arrange(desc(AwayTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
-```{r}
 
+## Evinde en cok gol atan 5 takim {.tabset}
 
+### Table
 
-#needs to updated not every file ends with 16th column
-res <- cor(data[c("FTHG","FTAG","HTHG","HTAG","HS","AS","HST","AST","HF","AF","HC","AC","HY","AY","HR","AR")])
-
-ggcorrplot::ggcorrplot(res,type="lower",hc.order=TRUE,method='circle')
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = FTHG) %>%
+  group_by(HomeTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = FTHG) %>%
+  group_by(HomeTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Evinde ilk yarida en cok gol atan 5 takim {.tabset}
+
+### Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTHG) %>%
+  group_by(HomeTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTHG) %>%
+  group_by(HomeTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Deplasmanda en cok gol yiyen 5 takim {.tabset}
+
+### Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = FTHG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = FTHG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Deplasmanda ilk yarida en cok gol yiyen 5 takim {.tabset}
+
+### Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTHG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTHG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(HomeTeamGoal = sum)) %>%
+  arrange(desc(HomeTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Deplasmanda en cok gol atan 5 takim {.tabset}
+
+### Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = FTAG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
+  arrange(desc(AwayTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = FTAG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
+  arrange(desc(AwayTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+## Deplasmanda ilk yarida en cok gol atan 5 takim {.tabset}
+
+### Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTAG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
+  arrange(desc(AwayTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
+### Code
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  pivot_longer(cols = HTAG) %>%
+  group_by(AwayTeam) %>%
+  summarise_at(vars(value),list(AwayTeamGoal = sum)) %>%
+  arrange(desc(AwayTeamGoal)) %>%
+  head(5) %>%
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
+```
+
 
 ```{r Model}
 
