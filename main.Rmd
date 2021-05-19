@@ -22,17 +22,23 @@ library(caret)
 library(nnet)
 library(gridExtra)
 library(grid)
+library(janitor)
 ```
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-data <- read_csv(url("https://www.football-data.co.uk/mmz4281/1920/E0.csv"))
-data <- data[1:41]
-```
-
 
 ## Data Description
 
 data description here
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data <- read_csv(url("https://www.football-data.co.uk/mmz4281/1920/T1.csv"))
+data <- data[1:41]
+data %>% 
+  head(10) %>% 
+  kable("html",row.names = FALSE) %>%
+  kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) %>% 
+  kableExtra::scroll_box(width = "100%")
+  
+```
 
 ## Data Analysis
 
@@ -47,7 +53,7 @@ Teams <-
 
 
 kable(col.names = NULL,list(Teams[1:10,],Teams[11:nrow(Teams),])) %>%
-kable_styling(position = "center")
+kable_styling(font_size = 20,position = "center")
 
 ```
 
@@ -149,14 +155,39 @@ ga_table <-
 gd_table <-
   ddply(merge(ga_table, gf_table, by = "value"),.(value),summarise, GD=sum(GF-GA))
 
+hmp_table <-
+  data %>% 
+  get_dupes(HomeTeam) %>% 
+  select(dupe_count,HomeTeam) %>% 
+  unique() %>% 
+  setNames(c("HMP","value"))
+
+amp_table <-
+  data %>% 
+  get_dupes(AwayTeam) %>% 
+  select(dupe_count,AwayTeam) %>% 
+  unique() %>% 
+  setNames(c("AMP","value"))
+
+mp_table <-
+  ddply(merge(amp_table, hmp_table, by = "value"),.(value),summarise, MP=sum(HMP+AMP))
+
 ```
 
 
 ```{r echo=FALSE}
-standings <- cbind(Teams,wins_table,draw_table,lost_table,gf_table,ga_table,gd_table,points_table)
-standings <- standings[,c(-2,-4,-6,-8,-10,-12,-14)]
+standings <- cbind(Teams,mp_table,wins_table,draw_table,lost_table,gf_table,ga_table,gd_table,points_table)
+standings <- standings[,c(-2,-4,-6,-8,-10,-12,-14,-16)]
 colnames(standings)[1] <- "Teams"
+
+standings <-
+  standings %>% arrange(desc(P))
+
+Rank <- 1:nrow(standings)
+standings$Rank <- Rank
+
 standings %>% 
+  select(Rank,Teams,MP,W,D,L,GF,GA,GD,P) %>% 
   kable("html",row.names = FALSE) %>%
   kable_styling(font_size = 20,bootstrap_options = c("striped","hover")) 
 ```
@@ -458,8 +489,6 @@ data %>%
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 HomeShot <- data %>%
-                group_by(HomeTeam) %>%
-                summarise(HomeTeam,HS) %>%
                 pivot_longer(cols = HS) %>% 
                 group_by(HomeTeam) %>% 
                 summarise_at(vars(value),list(HomeShots=sum)) %>% 
@@ -467,8 +496,6 @@ HomeShot <- data %>%
                 
 
 AwayShot <- data %>%
-                group_by(AwayTeam) %>%
-                summarise(AwayTeam,AS) %>%
                 pivot_longer(cols = AS) %>%
                 group_by(AwayTeam) %>% 
                 summarise_at(vars(value),list(AwayShots = sum)) %>% 
@@ -488,8 +515,6 @@ TotalShot %>%
 
 ```{r message=FALSE, warning=FALSE}
 HomeShot <- data %>%
-                group_by(HomeTeam) %>%
-                summarise(HomeTeam,HS) %>%
                 pivot_longer(cols = HS) %>% 
                 group_by(HomeTeam) %>% 
                 summarise_at(vars(value),list(HomeShots=sum)) %>% 
@@ -497,8 +522,6 @@ HomeShot <- data %>%
                 
 
 AwayShot <- data %>%
-                group_by(AwayTeam) %>%
-                summarise(AwayTeam,AS) %>%
                 pivot_longer(cols = AS) %>%
                 group_by(AwayTeam) %>% 
                 summarise_at(vars(value),list(AwayShots = sum)) %>% 
@@ -520,8 +543,6 @@ TotalShot %>%
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 HomeOff <- data %>%
-                group_by(HomeTeam) %>%
-                summarise(HomeTeam,HF) %>%
                 pivot_longer(cols = HF) %>%
                 group_by(HomeTeam) %>% 
                 summarise_at(vars(value),list(HomeOffs = sum))%>% 
@@ -529,8 +550,6 @@ HomeOff <- data %>%
 
 
 AwayOff <- data %>%
-                group_by(AwayTeam) %>%
-                summarise(AwayTeam,AF) %>%
                 pivot_longer(cols = AF) %>%
                 group_by(AwayTeam) %>% 
                 summarise_at(vars(value),list(AwayOffs = sum)) %>% 
@@ -550,8 +569,6 @@ TotalOff %>%
 
 ```{r message=FALSE, warning=FALSE}
 HomeOff <- data %>%
-                group_by(HomeTeam) %>%
-                summarise(HomeTeam,HF) %>%
                 pivot_longer(cols = HF) %>%
                 group_by(HomeTeam) %>% 
                 summarise_at(vars(value),list(HomeOffs = sum))%>% 
@@ -559,8 +576,6 @@ HomeOff <- data %>%
 
 
 AwayOff <- data %>%
-                group_by(AwayTeam) %>%
-                summarise(AwayTeam,AF) %>%
                 pivot_longer(cols = AF) %>%
                 group_by(AwayTeam) %>% 
                 summarise_at(vars(value),list(AwayOffs = sum)) %>% 
@@ -583,8 +598,6 @@ TotalOff %>%
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 HomeCor <- data %>%
-                group_by(HomeTeam) %>%
-                summarise(HomeTeam,HC) %>%
                 pivot_longer(cols = HC) %>%
                 group_by(HomeTeam) %>% 
                 summarise_at(vars(value),list(HomeCors = sum)) %>% 
@@ -592,8 +605,6 @@ HomeCor <- data %>%
 
 
 AwayCor <- data %>%
-                group_by(AwayTeam) %>%
-                summarise(AwayTeam,AC) %>%
                 pivot_longer(cols = AC) %>%
                 group_by(AwayTeam) %>% 
                 summarise_at(vars(value),list(AwayCors = sum)) %>% 
@@ -613,8 +624,6 @@ TotalCor %>%
 
 ```{r message=FALSE, warning=FALSE}
 HomeCor <- data %>%
-                group_by(HomeTeam) %>%
-                summarise(HomeTeam,HC) %>%
                 pivot_longer(cols = HC) %>%
                 group_by(HomeTeam) %>% 
                 summarise_at(vars(value),list(HomeCors = sum)) %>% 
@@ -622,8 +631,6 @@ HomeCor <- data %>%
 
 
 AwayCor <- data %>%
-                group_by(AwayTeam) %>%
-                summarise(AwayTeam,AC) %>%
                 pivot_longer(cols = AC) %>%
                 group_by(AwayTeam) %>% 
                 summarise_at(vars(value),list(AwayCors = sum)) %>% 
@@ -863,45 +870,4 @@ data %>%
   kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
 
-
-```{r Model}
-
-data$Date <- lubridate::mdy(data$Date)
-data$Time <- hms::as_hms(data$Time)
-data$FTR <- as.factor(data$FTR)
-data$HTR <- as.factor(data$HTR)
-
-data <- data %>% mutate(FTR= relevel(FTR,ref='H'),
-                        HTR=relevel(HTR,ref='H'))
-
-index<- createDataPartition(data$FTR,p=.70,list = FALSE)
-
-train <- data[index,]
-test<- data[-index,]
-
-
-
-
-multinom_mod<- multinom(FTR ~ . ,data=train[c("FTR","HTR","FTHG","FTAG","HTHG","HTAG","HS","AS","HST","AST","HF","AF","HC","AC","HY","AY","HR","AR")])
-
-
-
-```
-
-```{r}
-
-
-HomeBet <-data %>%  filter(FTR == "H") %>% 
-  select("Date","HomeTeam","AwayTeam","FTR","B365H","BWH","IWH","PSH","WHH","VCH")
-
-
-HomeBet$Max <- pmax(HomeBet$B365H,HomeBet$IWH,HomeBet$PSH,HomeBet$WHH,HomeBet$VCH)
-
-AwayBet <-data %>%  filter(FTR == "A") %>% 
-  select("Date","HomeTeam","AwayTeam","FTR","B365A","BWA","IWA","PSA","WHA","VCA")
-
-AwayBet$Max <- pmax(AwayBet$B365A,AwayBet$IWA,AwayBet$PSA,AwayBet$WHA,AwayBet$VCA)
-AwayBet
-
-```
 
