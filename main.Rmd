@@ -482,12 +482,10 @@ data %>%
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data %>%
   select(Date,HomeTeam,AwayTeam,FTHG,FTAG) %>%
-  rowwise() %>%
-  mutate(m = sum(c(FTHG,FTAG))) %>%
-  ungroup() %>%
-  arrange(desc(m)) %>%
+  mutate(TG = rowSums(select_(.,"FTHG","FTAG"))) %>% 
+  arrange(desc(TG)) %>%
   head(3) %>%
-  select(-m)%>%
+  select(-TG)%>%
   kable(digits = 2,"html",row.names = FALSE) %>%
   kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
@@ -497,12 +495,10 @@ data %>%
 ```{r message=FALSE, warning=FALSE}
 data %>%
   select(Date,HomeTeam,AwayTeam,FTHG,FTAG) %>%
-  rowwise() %>%
-  mutate(m = sum(c(FTHG,FTAG))) %>%
-  ungroup() %>%
-  arrange(desc(m)) %>%
+  mutate(TG = rowSums(select_(.,"FTHG","FTAG"))) %>% 
+  arrange(desc(TG)) %>%
   head(3) %>%
-  select(-m)%>%
+  select(-TG)%>%
   kable(digits = 2,"html",row.names = FALSE) %>%
   kable_styling(font_size = 20,bootstrap_options = c("striped","hover"))
 ```
