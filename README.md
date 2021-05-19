@@ -7,11 +7,11 @@
 - xxxxxx Bugra Duman
 
 
-Content tree: </ br>
--.Rdata: R Studio Project file - not needed </ br>
--.Rhistory: R Studio Project file - not needed </ br>
--README.md: You are looking at it :) </ br>
--main.Rmd: R Markdown file where you can find all codes with appropriate documentation/comments </ br>
--main.html: Knitted snapshot of the outputs from R Markdown file </ br>
+Content tree: 
+- .Rdata: R Studio Project file - not needed
+- .Rhistory: R Studio Project file - not needed
+- README.md: You are looking at it :)
+- main.Rmd: R Markdown file where you can find all codes with appropriate documentation/comments
+- main.html: Knitted snapshot of the outputs from R Markdown file
 
 *Feel free to contribute and ask your questions*
