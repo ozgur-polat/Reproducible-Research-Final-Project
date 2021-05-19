@@ -25,9 +25,20 @@ library(grid)
 library(janitor)
 ```
 
-## Data Description
+## Data Source
 
-data description here
+**Source:**https://www.football-data.co.uk/data.php
+
+Fulltime and halftime results for up to 22 European league divisions from 25 seasons back to 1993/94. Additional match statistics since 2000/01, including shots on goal, corners, fouls, offsides, bookings, red cards and referees, are also available for the major European football leagues, including the English Premiership and lower divisions, the Socttish Premiersip, German Budnesliga, Spanish la Liga, Italian Serie A and French Championnat.
+
+Historical match betting odds data from up to 10 major online bookmakers are available back to 2000/01. Since 2005/06 average and maximum prices for match betting, total goals and Asian handicap have also been collected from Betbrain. Since 2017/2018, match statistics are available for all 22 divisions.
+
+In this reproducible project you can simply use other datasets in this data source as well. For more information on the dataset please consult the data dictionary below.
+
+## Data Description
+All data is in csv format, ready for use within standard spreadsheet applications. Please note that some abbreviations are no longer in use (in particular odds from specific bookmakers no longer used) and refer to data collected in earlier seasons. For a current list of what bookmakers are included in the dataset please visit the link given above.
+
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 data <- read_csv(url("https://www.football-data.co.uk/mmz4281/1920/T1.csv"))
